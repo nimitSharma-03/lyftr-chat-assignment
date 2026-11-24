@@ -34,7 +34,7 @@ DEFAULT_SYSTEM_PROMPT = (
 @dataclass(frozen=True)
 class Settings:
     llm_api_keys: list[str] = field(default_factory=list)
-    llm_model: str = "gemini/gemini-2.5-flash"
+    llm_model: str = "gemini/gemini-3.5-flash-lite"
     llm_key_models: list[str] = field(default_factory=list)
     database_url: str = "sqlite:////data/app.db"
     allowed_origins: list[str] = field(default_factory=list)
@@ -56,8 +56,8 @@ class Settings:
             temperature = 0.2
         return cls(
             llm_api_keys=_csv(os.getenv("LLM_API_KEYS")),
-            llm_model=os.getenv("LLM_MODEL", "gemini/gemini-2.5-flash").strip()
-            or "gemini/gemini-2.5-flash",
+            llm_model=os.getenv("LLM_MODEL", "gemini/gemini-3.5-flash-lite").strip()
+            or "gemini/gemini-3.5-flash-lite",
             llm_key_models=_csv(os.getenv("LLM_KEY_MODELS")),
             database_url=os.getenv("DATABASE_URL", "sqlite:////data/app.db").strip(),
             allowed_origins=_csv(os.getenv("ALLOWED_ORIGINS", "http://localhost:3000")),

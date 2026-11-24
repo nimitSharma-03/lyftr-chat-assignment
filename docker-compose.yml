@@ -9,7 +9,7 @@ services:
         required: false
     environment:
       LLM_API_KEYS: ${LLM_API_KEYS:-mock-demo-key-1,mock-demo-key-2}
-      LLM_MODEL: ${LLM_MODEL:-gemini/gemini-2.5-flash}
+      LLM_MODEL: ${LLM_MODEL:-gemini/gemini-3.5-flash-lite}
       LLM_KEY_MODELS: ${LLM_KEY_MODELS:-}
       DATABASE_URL: ${DATABASE_URL:-sqlite:////data/app.db}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
