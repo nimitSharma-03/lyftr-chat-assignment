@@ -1,0 +1,36 @@
+# Render Blueprint: backend (Docker web service) + frontend (static site).
+# Secrets (LLM_API_KEYS) are entered in the Render dashboard, never committed.
+services:
+  - type: web
+    name: lyftr-chat-api
+    runtime: docker
+    plan: free
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: LLM_API_KEYS
+        sync: false
+      - key: LLM_MODEL
+        value: gemini/gemini-2.5-flash
+      - key: DATABASE_URL
+        value: sqlite:////data/app.db
+      - key: ALLOWED_ORIGINS
+        value: https://lyftr-chat-web.onrender.com
+      - key: ENABLE_FAILURE_SIMULATION
+        value: "true"
+
+  - type: web
+    name: lyftr-chat-web
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://lyftr-chat-api.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
