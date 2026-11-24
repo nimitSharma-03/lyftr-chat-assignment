@@ -28,6 +28,7 @@ from .config import Settings  # noqa: E402
 logger = logging.getLogger("app.llm")
 
 litellm.suppress_debug_info = True
+logging.getLogger("LiteLLM").setLevel(logging.WARNING)
 litellm.drop_params = True
 
 SIMULATABLE_STATUSES = {429, 500, 502, 503}
