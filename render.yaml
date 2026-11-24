@@ -14,6 +14,8 @@ services:
         sync: false
       - key: LLM_MODEL
         value: gemini/gemini-3.5-flash-lite
+      - key: LLM_KEY_MODELS
+        value: gemini/gemini-3.5-flash-lite,gemini/gemini-flash-lite-latest
       - key: DATABASE_URL
         value: sqlite:////data/app.db
       - key: ALLOWED_ORIGINS

@@ -22,7 +22,9 @@ render.yaml          Render blueprint for the live deployment
 | Health | https://lyftr-chat-api-ycbd.onrender.com/health |
 | Interactive API docs | https://lyftr-chat-api-ycbd.onrender.com/docs |
 
-> Both services run on Render's free tier, so the first request after a period of inactivity can take about 30–60 s while the backend wakes up. The health badge in the UI header turns green once it is reachable.
+> Both services run on Render's free tier, so the first request after a period of inactivity can take about 30–60 s while the backend wakes up (the UI shows a "Connecting to the server" notice until it is reachable).
+>
+> **Live configuration:** two keys in the pool. `key_1` uses `gemini/gemini-3.5-flash-lite` and `key_2` uses `gemini/gemini-flash-lite-latest` (`LLM_KEY_MODELS`), so a capacity problem on one model does not take down both keys. `ENABLE_FAILURE_SIMULATION=true`. The free tier has no persistent disk, so the deployed SQLite file at `/data/app.db` is reset whenever the service is redeployed or restarted. Locally, the Docker named volume keeps it across restarts.
 
 ---
 
@@ -133,8 +135,10 @@ POST /chat
 ### Frontend
 
 * A new session id (`s-xxxxxxxxxxxx`) is generated on every page load. **New chat** starts another one without reloading.
-* Every assistant reply shows `resolution_source`, `model`, latency, input/output tokens, `key_id` and `fallback_attempts`. All contract `data-testid`s are present, and each one holds exactly the raw value.
-* Errors (422, 503, network) appear as a readable red message in the chat with a **Retry** button, never as a blank screen.
+* Deliberately minimal chat layout: a header with **New chat** and a settings button, the conversation, and the message box.
+* Under every assistant reply there is a quiet metadata line: `resolution_source`, `model`, latency and input/output tokens of that request. When a reply needed failover, it also says which key served it and after how many failures. All contract `data-testid`s are present, and each one holds exactly the raw value (e.g. `LIVE_INFERENCE`, `812 ms`, `42`).
+* The settings dialog holds the optional **Instructions** (system prompt, `data-testid="system-prompt-input"`) and a **Simulate key failure** selector, which sends `X-Simulate-Failure` for demos. A "Failure test on" badge stays visible while it is active.
+* Errors (422, 503, network) appear as a readable message in the chat with a **Try again** button, never as a blank screen.
 * The API URL is set at build time (`VITE_API_URL`). The Docker image can also override it at container start through `API_URL`, which is written to `/config.js`, so no rebuild is needed.
 
 ### Docker
@@ -210,7 +214,13 @@ curl -s -i -X POST $API/chat -H 'Content-Type: application/json' -d '{"session_i
 curl -s -i -X POST $API/chat -H 'Content-Type: application/json' -d '{oops'                               # 422
 ```
 
-**In the UI:** send *"What is the capital of France?"*, click **New chat** and send it again. The second reply carries an orange `LLM_CACHE` badge, `key null` and a latency of a few ms. Open **Settings** → *Failover test* and pick `key_1 → 429`. The next reply shows `key key_2` and `fallbacks 1`. Pick *All keys → 429* to see the 503 message rendered in the chat.
+**In the UI:**
+
+1. Send *"What is the capital of France?"*. The line under the reply reads `LIVE_INFERENCE · <model> · ~900 ms · 32 in · 7 out`.
+2. Click **New chat** and send the same question. The reply is identical and the line reads `LLM_CACHE · … · 3 ms` with the same token counts.
+3. Ask a follow-up such as *"What river runs through it?"*. The answer uses the earlier context, and `in` grows because the history is part of this request's prompt.
+4. Open the settings button (top right) → **Simulate key failure** → *key_1 returns 429* → **Done**, then send a message. The reply shows *served by key_2 after 1 failover*.
+5. Choose *Every key returns 429* and send a message. A readable "All providers unavailable" error appears in the chat, and `GET /sessions/<id>/messages` shows that the failed turn was not stored.
 
 **Automated tests** (offline, using demo keys):
 
@@ -235,10 +245,10 @@ They cover the contract shape, cache hit/miss and identical replies, per-request
 ## 6. Bonus features
 
 * **Session system prompt.** An optional field (`data-testid="system-prompt-input"`) and `system_prompt` in the API. It is stored per session, so later turns keep using it.
-* **Failover test switch in the UI.** A dropdown sends `X-Simulate-Failure` presets, so failover can be shown without curl.
+* **Failover test switch in the UI.** The settings dialog sends `X-Simulate-Failure` presets, so failover can be shown without curl.
 * **Key cooldown** after real 429/quota errors, which saves latency on keys that are known to be exhausted.
-* **Mixed providers per key** (`LLM_KEY_MODELS`). For example, `key_1` can be Gemini and `key_2` a different provider, so a provider-wide outage is survivable.
+* **Different model per key** (`LLM_KEY_MODELS`). `key_2` can use another model or even another provider, so an overloaded model or a provider-wide outage is survivable. The live deployment uses two different Gemini models.
 * **Demo keys** (`mock-…`) run the whole stack offline through LiteLLM's mock mode. They are useful for tests and for trying the app without provider quota.
 * **Richer `/health`.** Database status, simulation flag and per-key cooldown state, still with the required `status`, `keys_configured` and `cache_enabled` fields.
-* **UI niceties.** Backend status badge, New chat button, Retry on errors, Markdown rendering of replies, dark mode, mobile layout.
+* **UI niceties.** New chat button, Try again on errors, copy button on replies, Markdown rendering (lists, bold, code), auto-growing input, wake-up notice for the free-tier backend, automatic dark mode and a mobile layout.
 * **Runtime-configurable frontend image** (`API_URL` → `/config.js`).
