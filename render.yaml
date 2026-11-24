@@ -29,7 +29,7 @@ services:
     staticPublishPath: dist
     envVars:
       - key: VITE_API_URL
-        value: https://lyftr-chat-api.onrender.com
+        value: https://lyftr-chat-api-ycbd.onrender.com
     routes:
       - type: rewrite
         source: /*

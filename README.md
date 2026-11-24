@@ -18,9 +18,9 @@ render.yaml          Render blueprint for the live deployment
 | Tier | URL |
 |------|-----|
 | Frontend | https://lyftr-chat-web.onrender.com |
-| Backend API base | https://lyftr-chat-api.onrender.com |
-| Health | https://lyftr-chat-api.onrender.com/health |
-| Interactive API docs | https://lyftr-chat-api.onrender.com/docs |
+| Backend API base | https://lyftr-chat-api-ycbd.onrender.com |
+| Health | https://lyftr-chat-api-ycbd.onrender.com/health |
+| Interactive API docs | https://lyftr-chat-api-ycbd.onrender.com/docs |
 
 > Both services run on Render's free tier, so the first request after a period of inactivity can take about 30–60 s while the backend wakes up. The health badge in the UI header turns green once it is reachable.
 
@@ -150,7 +150,7 @@ POST /chat
 Set a base URL first (live or local):
 
 ```bash
-API=https://lyftr-chat-api.onrender.com     # or http://localhost:8000
+API=https://lyftr-chat-api-ycbd.onrender.com     # or http://localhost:8000
 ```
 
 **Health**
