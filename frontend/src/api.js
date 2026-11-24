@@ -14,20 +14,38 @@ export function newSessionId() {
   return `s-${hex.slice(0, 12)}`;
 }
 
-function describeError(status, body) {
+export class ChatError extends Error {
+  constructor(title, message, status = null) {
+    super(message);
+    this.title = title;
+    this.status = status;
+  }
+}
+
+function toChatError(status, body) {
   const detail = body && body.detail;
   if (status === 503) {
-    return 'All providers are unavailable right now (every API key failed). Please try again in a moment.';
+    return new ChatError(
+      'All providers unavailable',
+      'Every API key in the pool failed for this request. Nothing was saved to the conversation, so it is safe to retry.',
+      status,
+    );
   }
   if (status === 422) {
+    let msg = 'Please check your input.';
     if (Array.isArray(detail)) {
-      const msgs = detail.map((d) => d.msg || JSON.stringify(d)).join('; ');
-      return `Invalid request: ${msgs}`;
+      msg = detail
+        .map((d) => String(d.msg || '').replace(/^Value error, /, ''))
+        .filter(Boolean)
+        .join('; ');
+    } else if (typeof detail === 'string') {
+      msg = detail;
     }
-    return `Invalid request: ${typeof detail === 'string' ? detail : 'please check your input.'}`;
+    msg = msg.charAt(0).toUpperCase() + msg.slice(1);
+    return new ChatError('Request rejected', msg, status);
   }
-  if (typeof detail === 'string') return `Error ${status}: ${detail}`;
-  return `Unexpected error (HTTP ${status}). Please try again.`;
+  if (typeof detail === 'string') return new ChatError('Request failed', detail, status);
+  return new ChatError('Request failed', 'The server returned an unexpected error. Please try again.', status);
 }
 
 export async function sendChat({ sessionId, message, systemPrompt, simulateFailure }) {
@@ -45,8 +63,9 @@ export async function sendChat({ sessionId, message, systemPrompt, simulateFailu
       body: JSON.stringify(payload),
     });
   } catch {
-    throw new Error(
-      'Could not reach the server. It may be waking up from idle - please wait a few seconds and retry.',
+    throw new ChatError(
+      'Server unreachable',
+      'Could not connect to the API. If it was idle it may take up to a minute to wake up. Please retry shortly.',
     );
   }
 
@@ -56,8 +75,10 @@ export async function sendChat({ sessionId, message, systemPrompt, simulateFailu
   } catch {
     body = null;
   }
-  if (!res.ok) throw new Error(describeError(res.status, body));
-  if (!body || typeof body.reply !== 'string') throw new Error('The server returned an unexpected response.');
+  if (!res.ok) throw toChatError(res.status, body);
+  if (!body || typeof body.reply !== 'string') {
+    throw new ChatError('Unexpected response', 'The server returned a response in an unknown format.');
+  }
   return body;
 }
 
